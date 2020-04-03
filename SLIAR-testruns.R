@@ -3,12 +3,12 @@
 
 library("ggplot2")
 
-source("SLIAR-SSA.R")
+source("R/SLIAR-SSA.R")
 
 
 # read in parameter values based on various scenarios
 
-paramset <- read.csv("parameter-sets.csv")
+paramset <- read.csv("data/parameter-sets.csv")
 
 
 Ro = with(paramset, beta*(epsilon/kappa + p/alpha + (1-p)*delta/eta) )
@@ -28,17 +28,17 @@ tf <- 60
 times <- seq(0, tf, by=0.01)
 
 # 20 simulations 
-A = repsim(S0,rates,nu,param=param[2,2:9],tf=360,simName,runs=20)
+A = repsim(S0,rates,nu,param=param,tf=360,simName,runs=20)
 
 # plot R for every sim
-ggplot(A,aes(x=t,y=R))+geom_line(aes(color = run))
+sampleruns <- ggplot(A,aes(x=t,y=R))+geom_line(aes(color = run))
+print(sampleruns)
 
-# plot L, I, A for one sim
-wide = subset(A,run==6)
-long = stack(wide[,3:5])
-long$t = rep(wide$t,times=3)
-ggplot(long,aes(x=t,y=values))+geom_line(aes(color = ind))
-
+# plot L, I, A for one sim, should probably pick one that doesn't crash right away:)
+B = pluckrun(A,3)
+dev.new()
+singlerun <- ggplot(B,aes(x=t,y=values))+geom_line(aes(color = ind))
+print(singlerun)
 # run the ode simulator 
 # one trick to get numerical solutions of population models without problems
 # from round-off errors introducint negative populations is to transform the model to log
@@ -47,7 +47,7 @@ ggplot(long,aes(x=t,y=values))+geom_line(aes(color = ind))
 # initial state vector for ode (log)
 #x0 <- log(S0)
 #names(x0) = c("S","L","I","A","R")
-res_ode <- ode(y = S0, times, func = SLIARrhs, parms)
+res_ode <- ode(y = S0, times, func = SLIARrhs, param)
 
 # need to figure out how to use ggplot to add the ode results in
 # for now just make a new plot
