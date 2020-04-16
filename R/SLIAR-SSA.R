@@ -25,16 +25,17 @@ rates <- c("beta*S*(epsilon*L + I + delta*A)/(S+L+I+A+R)",
            "(1-p)*kappa*L",
            "eta*A",
            "f*alpha*I",
-           "(1-f)*alpha*I")   
+           "(1-f)*alpha*I",
+           "gamma")   
 
 
 # The State-change matrix
 # has one column for each transition and one row for each state variable
-nu  <- matrix(c(-1,  0, 0,   0,  0,  0,
-                +1, -1, -1,  0,  0,  0,
-                 0, +1,  0,  0, -1, -1,
-                 0,  0, +1, -1,  0,  0,
-                 0,  0,  0, +1, +1,  0),
+nu  <- matrix(c(-1,  0, 0,   0,  0,  0, 0,
+                +1, -1, -1,  0,  0,  0,+1,
+                 0, +1,  0,  0, -1, -1, 0,
+                 0,  0, +1, -1,  0,  0, 0,
+                 0,  0,  0, +1, +1,  0, 0),
                  nrow=5,byrow=TRUE) 
 
 # ODE model
@@ -46,7 +47,7 @@ SLIARrhs <- function(t,x, parms=NULL) {
 	with(as.list(c(x,parms)),{
 
 		dS = -beta*S*(epsilon*L + I + delta*A)/(S+L+I+A+R);
-		dL = beta*S*(epsilon*L + I + delta*A)/(S+L+I+A+R) - kappa*L;
+		dL = gamma + beta*S*(epsilon*L + I + delta*A)/(S+L+I+A+R) - kappa*L;
 		dI = p*kappa*L - alpha*I;
 		dA = (1-p)*kappa*L - eta*A;
 		dR = f*alpha*I + eta*A;

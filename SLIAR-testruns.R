@@ -14,7 +14,7 @@ paramset <- read.csv("data/parameter-sets.csv")
 Ro = with(paramset, beta*(epsilon/kappa + p/alpha + (1-p)*delta/eta) )
 
 # use the second parameter set  (Diamond Princess paper)
-param = paramset[2,2:9]
+param = paramset[2,-1]
 
 # Initial state vector for ssa
 # A = 1 for the initial 'invasion'
