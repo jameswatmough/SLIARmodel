@@ -87,4 +87,8 @@ print(p + coord_trans(y='log10') + scale_color_viridis(discrete=TRUE))
 
 # or just plot NB data
 p = ggplot(subset(can_long,prov=="New Brunswick"),aes(x=date,y=cum.cases))+geom_step(aes(color=prov)) + ylab("Cumulative Cases")
-print(p + coord_trans(y='log10'))
+p = p + coord_trans(y='log10')
+print(p)
+
+prov_Atlantic = c("Nova Scotia","Newfoundland and Labrador","New Brunswick","Prince Edward Island")
+p = ggplot(subset(can_long,prov%in%prov_Atlantic),aes(x=date,y=cum.cases))+geom_step(aes(color=prov)) + ylab("Cumulative Cases") +  coord_trans(y='log10')
