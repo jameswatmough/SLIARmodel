@@ -1,21 +1,31 @@
 # libraries
 
 library(ggplot2)
-library(viridis)
 
 # read in cases from John Hopkins database
 datapath = "~/projects/SARS-CoV-2/data/COVID-19/csse_covid_19_data/csse_covid_19_time_series/"
+setwd(datapath)
+system("git pull")
 filename = paste(datapath,"time_series_covid19_confirmed_global.csv",sep="")
-x = read.csv(filename)
+data = read.csv(filename)
 
-days = dim(x)[2]
+datapathCA = "~/projects/SARS-CoV-2/data/Covid19Canada/timeseries_prov/"
+filenameCAprov =paste(datapathCA,"cases_timeseries_prov.csv",sep="")
+dataCA = read.csv(filenameCAprov)
 
-date = as.Date(names(x)[-(1:4)],format='X%m.%d.%y')
+dataCA$date_report = as.Date(dataCA$date_report,format='%d-%m-%Y')
+days = 5:dim(data)[2]
+
+date = as.Date(names(data)[-(1:4)],format='X%m.%d.%y')
+
+prov_Atlantic = c("Nova Scotia",
+		  "Newfoundland and Labrador",
+		  "New Brunswick",
+		  "Prince Edward Island")
 
 # pick out the columns for Canada and remove cruise ship and recovered
-CAN_col = grep('Canada',x$Country.Region)
+CAN_col = grep('Canada',data$Country.Region)
 CAN_col = CAN_col[-c(3,12:13)]
-CAN_col = grep('Canada',x$Country.Region)
 Europe_names = c('Austria',
 		'Albania',
 		'Andorra',
@@ -59,36 +69,40 @@ Europe_names = c('Austria',
 		'Ukraine',
 		'United Kingdom')
 
-Europe_rows = x$Country.Region%in%Europe_names & x$Province.State==''
+Europe_col = data$Country.Region%in%Europe_names & data$Province.State==''
 
-JPN_col = grep('Japan',x$Country.Region)
-
-plot(date,x[140,-(1:4)])
-dev.new()
-plot(date,x[140,5:days],log='y')
-
-
-# New Brunswick Data
-nb = data.frame(date = as.Date(names(x)[5:days],format='X%m.%d.%y'), cum.cases = as.numeric(x[CAN_col[5],5:days]))
-p = ggplot(subset(nb,cum.cases>0),aes(x=date,y=cum.cases))+geom_point()+xlab("Date")+ylab("Cumulative Cases") + coord_trans(y='log10') 
-dev.new()
-print(p)
-
-# pull out canadian rows and put in long format
-can_long = data.frame(NULL)
-for (prov in CAN_col) {
-  df = data.frame(date = as.Date(names(x)[5:days],format='X%m.%d.%y'), cum.cases = as.numeric(x[prov,5:days]),prov = as.character(x$Province.State[prov]))
-	can_long = rbind(can_long,subset(df,cum.cases>0))
+plot_Country = function(country,x=data,d=days) {
+  i = grep(country,x$Country.Region)
+  plot(date,x[i,-(1:4)])
+  plot(date,x[i,d],log='y')
 }
 
-p = ggplot(can_long,aes(x=date,y=cum.cases))+geom_step(aes(color=prov)) + ylab("Cumulative Cases")
-dev.new()
-print(p + coord_trans(y='log10') + scale_color_viridis(discrete=TRUE))
+plot_Prov = function(prov_name,x=data,d=days) {
+  i = grep(prov_name,x$Province.State)
+  prov_data = data.frame(date = as.Date(names(x)[d],format='X%m.%d.%y'), 
+		  cum.cases = as.numeric(x[i,d]))
+  p = ggplot(subset(prov_data,cum.cases>0),aes(x=date,y=cum.cases))+
+      geom_point()+
+      xlab("Date") + ylab("Cumulative Cases") +
+      coord_trans(y='log10') 
+  return(p)
+}
 
-# or just plot NB data
-p = ggplot(subset(can_long,prov=="New Brunswick"),aes(x=date,y=cum.cases))+geom_step(aes(color=prov)) + ylab("Cumulative Cases")
-p = p + coord_trans(y='log10')
-print(p)
+# pull out canadian rows and put in long format
+# generalize this to strip out a few rows and convert them to long format
+long_data = function(rows, col = 'Province.State',x = data, d = days) {
+  long = data.frame(NULL)
+  for (prov in rows) {
+  df = data.frame(date = as.Date(names(x)[d],format='X%m.%d.%y'), 
+		  cum.cases = as.numeric(x[prov,d]),
+		  prov = as.character(x[prov,col]))
+  long = rbind(long,subset(df,cum.cases>0))
+  }
+  return(long)
+}
 
-prov_Atlantic = c("Nova Scotia","Newfoundland and Labrador","New Brunswick","Prince Edward Island")
-p = ggplot(subset(can_long,prov%in%prov_Atlantic),aes(x=date,y=cum.cases))+geom_step(aes(color=prov)) + ylab("Cumulative Cases") +  coord_trans(y='log10')
+plot_rows = function(rows, x = data, d = days) {
+  long = long_data(rows,x=x,d=d)
+  p = ggplot(long,aes(x=date,y=cum.cases))+geom_step(aes(color=prov)) + ylab("Cumulative Cases")
+  print(p + coord_trans(y='log10') + scale_color_manual(values=rainbow(length(rows))))
+}
