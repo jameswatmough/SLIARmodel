@@ -20,7 +20,8 @@ simName <- "SLIAR epidemic model"
 # the model consists of specifying 
 # the changes in the state variables (transitions) 
 # and the rates for each event
-rates <- c("beta*S*(epsilon*L + I + delta*A)/(S+L+I+A+R)",    
+# last column is imporation of latent infections
+SLIAR.rates <- c("beta*S*(epsilon*L + I + delta*A)/(S+L+I+A+R)",    
            "p*kappa*L",
            "(1-p)*kappa*L",
            "eta*A",
@@ -31,7 +32,8 @@ rates <- c("beta*S*(epsilon*L + I + delta*A)/(S+L+I+A+R)",
 
 # The State-change matrix
 # has one column for each transition and one row for each state variable
-nu  <- matrix(c(-1,  0, 0,   0,  0,  0, 0,
+# last column is imporation of latent infections
+SLIAR.nu  <- matrix(c(-1,  0, 0,   0,  0,  0, 0,
                 +1, -1, -1,  0,  0,  0,+1,
                  0, +1,  0,  0, -1, -1, 0,
                  0,  0, +1, -1,  0,  0, 0,
@@ -43,7 +45,7 @@ nu  <- matrix(c(-1,  0, 0,   0,  0,  0, 0,
 # using `with` is the prefered method, but allowing 
 # for missing parameters allows use of global variables
 # note the switch to log variables to avoid numerical problems near zero populations
-SLIARrhs <- function(t,x, parms=NULL) {
+SLIAR.ode <- function(t,x, parms=NULL) {
 	with(as.list(c(x,parms)),{
 
 		dS = -beta*S*(epsilon*L + I + delta*A)/(S+L+I+A+R);
@@ -58,8 +60,10 @@ SLIARrhs <- function(t,x, parms=NULL) {
 }
 
 
-Ro = function(param) {
-	with(param, beta*(epsilon/kappa + p/alpha + (1-p)*delta/eta))
+SLIAR.Ro = function(param) {
+	Ro = with(param, beta*(epsilon/kappa + p/alpha + (1-p)*delta/eta))
+  names(Ro) = param[,'scenario']
+	return(Ro)
 }
 
 
