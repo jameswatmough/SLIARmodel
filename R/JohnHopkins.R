@@ -106,3 +106,7 @@ plot_rows = function(rows, x = data, d = days) {
   p = ggplot(long,aes(x=date,y=cum.cases))+geom_step(aes(color=prov)) + ylab("Cumulative Cases")
   print(p + coord_trans(y='log10') + scale_color_manual(values=rainbow(length(rows))))
 }
+
+plot_NB = function() {
+	ggplot(subset(dataCA,province=="New Brunswick"),aes(x=date_report,y=cases)) + geom_step(aes(color=province))
+}
