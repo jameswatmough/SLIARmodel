@@ -1,4 +1,4 @@
-SLmAIninit = function(m,n) {
+SLmAIninit = function(m=2,n=2,N0=10000) {
 
 	# The SLm(AI)nR model combines 
 	# a Erlang latent distribution 
@@ -14,7 +14,7 @@ SLmAIninit = function(m,n) {
 	Inames = paste("I",1:n,sep="")
 
 	# sample initial conditions, 
-	S0 <- c(10000,1,rep(0,m-1+2*n+2))
+	S0 <- c(N0-1,1,rep(0,m-1+2*n+2))
 	names(S0) = c("S",Lnames,Anames,Inames,"RA","RI")
 
 	# one possible stochastic simulation (SSA) model for this uses 
@@ -76,10 +76,15 @@ SLmAIninit = function(m,n) {
 repsim = function(S0,rates,nu,param, tf, simName, runs, method = ssa.d()) {
 	A = data.frame(NULL)
 	for (run in seq(1,runs)) {
-	res_ssa <- ssa(x0 = S0,
-		a=rates,nu,parms = param,tf,
-		method=method,simName,
-		verbose=FALSE)
+	res_ssa <- ssa(
+		x0 = S0,
+	  a = rates,
+	  nu = nu,
+	  parms = param,
+	  tf = tf,
+	  method=method,
+		simName=simName,
+	  verbose=FALSE)
 	# ssa.otl for tau leaping, dt for 
 # output of ssa includes $data, which has t, S, L, ... for each event
 # append a fourth column with run number to ssa$data
