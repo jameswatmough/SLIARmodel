@@ -1,11 +1,11 @@
 # load the libraries
 # the gillespie algorithms
-# at some point update this to SSA2
-require("GillespieSSA")
+# first attempt to update to SSA2
+require("GillespieSSA2")
 # the ode solvers
 require("deSolve")
 
-SLmAIn.sim = function(m=2,n=2,N0=10000) {
+SLmAIn.sim = function(m,n) {
 
 	# The SLm(AI)nR model combines 
 	# a Erlang latent distribution 
@@ -21,7 +21,7 @@ SLmAIn.sim = function(m=2,n=2,N0=10000) {
 	Inames = paste("I",1:n,sep="")
 
 	# sample initial conditions, 
-	S0 <- c(N0-1,1,rep(0,m-1+2*n+2))
+	S0 <- c(10000,1,rep(0,m-1+2*n+2))
 	names(S0) = c("S",Lnames,Anames,Inames,"RA","RI")
 
 	# one possible stochastic simulation (SSA) model for this uses 
@@ -83,14 +83,13 @@ SLmAIn.sim = function(m=2,n=2,N0=10000) {
 repsim = function(S0,rates,nu,param, tf, simName, runs, method = ssa.d()) {
 	A = data.frame(NULL)
 	for (run in seq(1,runs)) {
-	res_ssa <- ssa(
-		x0 = S0,
-	  a = rates,
-	  nu = nu,
-	  parms = param,
-	  tf = tf,
-	  method=method,
-		simName=simName,
+	res_ssa <- GillespieSSA2::ssa(
+	  initial_state = S0,
+	  reactions = rates,
+	  nu,
+	  params = param,
+	  final_time = tf,
+	  method=method,simName,
 	  verbose=FALSE)
 	# ssa.otl for tau leaping, dt for 
 # output of ssa includes $data, which has t, S, L, ... for each event
@@ -120,7 +119,6 @@ fsize = function(A) {
 	return(A[Reduce('+',tails,accumulate=TRUE),])
 }
 
-# still need to generalize the Ro computations for the LmAIn model
 RoSLmAI3R = function(param) {
 	sum( with(param, 
 		   beta*c(
