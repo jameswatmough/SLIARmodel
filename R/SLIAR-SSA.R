@@ -11,7 +11,7 @@ library("deSolve")
 # and can be replaced with 
 #   sim = SLmAIn.init(m=1,n=1)
 # the plots in the libraries make use of a simulation name
-SLAIR.sim = function(N0=10000) {
+SLIAR.sim = function(N0=10000) {
 
 	simName <- "SLIAR epidemic model"
 
