@@ -41,7 +41,7 @@ singlerun <- ggplot(B,aes(x=t,y=values))+geom_line(aes(color = ind))
 print(singlerun)
 
 # run the ode simulator 
-res_ode <- ode(y = S0, times, func = SLIAR.rhs, param)
+res_ode <- ode(y = S0, times, func = SLIAR.ode, param)
 
 # need to figure out how to use ggplot to add the ode results in
 # for now just make a new plot

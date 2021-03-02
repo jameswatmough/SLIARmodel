@@ -33,7 +33,7 @@ param$beta = c(rep(beta,param$n),rep(0,param$n))
 #param$beta = rep(.5*beta,2*param$n)
 
 
-SIR23 = SLmAIninit(param$m,param$n)
+SIR23 = SLmAIn.sim(param$m,param$n)
 
 # run through 6 beta values and 30 simulations each
 FSize = NULL
@@ -49,7 +49,7 @@ for (b in 1:6) {
 				param=p,
 				tf=360,
 				SIR23$simName,
-				runs=30
+				runs=1000
 	)
 	f = fsize(A)
 	f$b = b
