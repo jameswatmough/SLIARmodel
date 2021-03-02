@@ -7,6 +7,9 @@ library(ggplot2)
 # base path for the data git repositories 
 path_base = "~/projects/SARS-CoV-2/data/"
 
+# remember current directory
+cur.dir = getwd()
+
 # read in cases from John Hopkins database
 path_JohnHopkins = paste(path_base,"COVID-19/csse_covid_19_data/csse_covid_19_time_series/",sep="")
 setwd(path_JohnHopkins)
@@ -28,6 +31,9 @@ days = grep("^X",names(data_Global))
 setwd(paste(path_base,"Covid19Canada/timeseries_prov/",sep=""))
 system("git pull")
 data_Canada = read.csv("cases_timeseries_prov.csv")
+
+# resent working directory
+setwd(cur.dir)
 
 # recast the reporting dates for Covid19Canada as Dates
 data_Canada$date_report = as.Date(data_Canada$date_report,format='%d-%m-%Y')
@@ -107,10 +113,14 @@ plot_Prov = function(prov_name,x=data_Global,d=days) {
 long_data = function(rows, col = 'Province.State',x = data_Global, d = days) {
   long = data.frame(NULL)
   for (prov in rows) {
-  df = data.frame(date = as.Date(names(x)[d],format='X%m.%d.%y'), 
+		df = data.frame(
+			date = as.Date(names(x)[d],format='X%m.%d.%y'), 
 		  cum.cases = as.numeric(x[prov,d]),
-		  prov = as.character(x[prov,col]))
-  long = rbind(long,subset(df,cum.cases>0))
+		  prov = as.character(x[prov,col])
+		)
+		df$incidence = c(0,diff(df$cum.cases))
+		df$mavg = filter(df$incidence,rep(1/7,7))
+		long = rbind(long,subset(df,cum.cases>0))
   }
   return(long)
 }
@@ -132,4 +142,17 @@ plot_US_states = function(states, data = data_US_state) {
 
 plot_Province_daily = function(prov = c("New Brunswick")) {
 	ggplot(subset(data_Canada,province%in%prov),aes(x=date_report,y=cases)) + geom_step(aes(color=province)) + ylab("Daily Cases")
+}
+
+doubling.time = function(t,y,window) { 
+	# compute doubling times from vectors of date (t) and incidence (y)
+	n = length(window)
+	# result will be a vector of length(y)-n
+	dtime = rep(0,length=length(y)-n)
+  for (i in 1:length(dtime)) {
+		Y = log(y[i+window],2)
+		X = as.integer(t[i+window])
+		dtime[i] = (n*sum(X*Y)-sum(Y)*sum(X))/(n*sum(X^2) - sum(X)^2) 
+	}
+	return(data.frame(date = t[-(window)],dtime = dtime))
 }
