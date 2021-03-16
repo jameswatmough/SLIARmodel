@@ -5,7 +5,7 @@ require("GillespieSSA2")
 # the ode solvers
 require("deSolve")
 
-SLmAIn.sim = function(m,n) {
+SLmAIn.init = function(m,n) {
 
 	# The SLm(AI)nR model combines 
 	# a Erlang latent distribution 

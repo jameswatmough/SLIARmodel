@@ -1,10 +1,11 @@
-
+# sample script to generate states at time of first observed case
 
 # Run GillespieSSA for the general SLIAR model
 # generate distributions of infections by stage at time of first observed case
 
 library("ggplot2")
 library("GillespieSSA")
+library("dplyr")
 
 source("R/SLmAIn-SSA.R")
 
@@ -35,14 +36,13 @@ param$beta = c(rep(beta,param$n),rep(0,param$n))
 #param$beta = rep(.5*beta,2*param$n)
 
 
-SIR23 = SLmAIninit(param)
+SIR23 = SLmAIn.init(m = param$m, n=param$n)
 
-p = param
 A = repsim(
 		    SIR23$S0,
 				rates=SIR23$rates,
 				nu=SIR23$nu,
-				param=p,
+				param=param,
 				tf=60,
 				SIR23$simName,
 				runs=param$runs

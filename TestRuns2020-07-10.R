@@ -34,7 +34,7 @@ param$beta = c(rep(beta,param$n),rep(0,param$n))
 #param$beta = rep(.5*beta,2*param$n)
 
 
-SIR23 = SLmAIninit(param$m,param$n)
+SIR23 = SLmAIn.init(param$m,param$n)
 
 # insert the model for quarantine
 # multipy beta by 1/2 for I1+I2+I3>6
