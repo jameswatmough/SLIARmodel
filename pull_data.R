@@ -4,36 +4,22 @@
 
 library(ggplot2)
 
-# base path for the data git repositories 
-path_base = "~/projects/SARS-CoV-2/data/"
-
-# remember current directory
-cur.dir = getwd()
-
 # read in cases from John Hopkins database
-path_JohnHopkins = paste(path_base,"COVID-19/csse_covid_19_data/csse_covid_19_time_series/",sep="")
-setwd(path_JohnHopkins)
-system("git pull")
-data_Global = read.csv("time_series_covid19_confirmed_global.csv")
+data_Global = read.csv("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv")
 
-path_NYTimes = paste(path_base,"NYTimes-covid-19-data/",sep="")
-setwd(path_NYTimes)
-system("git pull")
-data_US = read.csv("us.csv")
-data_US_state = read.csv("us-states.csv")
-data_US_county = read.csv("us-counties.csv")
+# read in NY Times data
+url_nytimes = "https://raw.githubusercontent.com/nytimes/covid-19-data/master/"
+data_US = read.csv(paste(url_nytimes,"us.csv",sep=''))
+data_US_state = read.csv(paste(url_nytimes,"us-states.csv",sep=''))
+data_US_county = read.csv(paste(url_nytimes,"us-counties.csv",sep=''))
+
+# read in cases from Covid19Canada database
+data_Canada = read.csv("https://raw.githubusercontent.com/ccodwg/Covid19Canada/master/timeseries_prov/cases_timeseries_prov.csv")
 
 # John Hopkins time series data are in wide format with dates as X%m.%d.%y for column names 
 # the US and global files have different column numbers,  need to fix the next line to generalize away from the '5'
 days = grep("^X",names(data_Global))
 
-# read in cases from Covid19Canada database
-setwd(paste(path_base,"Covid19Canada/timeseries_prov/",sep=""))
-system("git pull")
-data_Canada = read.csv("cases_timeseries_prov.csv")
-
-# resent working directory
-setwd(cur.dir)
 
 # recast the reporting dates for Covid19Canada as Dates
 data_Canada$date_report = as.Date(data_Canada$date_report,format='%d-%m-%Y')
