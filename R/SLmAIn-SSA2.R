@@ -5,7 +5,7 @@ require("GillespieSSA2")
 # the ode solvers
 require("deSolve")
 
-SLmAIn.init = function(m,n) {
+SLmAIn.init = function(m=2,n=2,N0=10000) {
 
 	# The SLm(AI)nR model combines 
 	# a Erlang latent distribution 
@@ -21,7 +21,7 @@ SLmAIn.init = function(m,n) {
 	Inames = paste("I",1:n,sep="")
 
 	# sample initial conditions, 
-	S0 <- c(10000,1,rep(0,m-1+2*n+2))
+	S0 <- c(N0-1,1,rep(0,m-1+2*n+2))
 	names(S0) = c("S",Lnames,Anames,Inames,"RA","RI")
 
 	# one possible stochastic simulation (SSA) model for this uses 
