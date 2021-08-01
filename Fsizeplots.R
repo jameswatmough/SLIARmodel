@@ -40,7 +40,8 @@ FSize = NULL
 for (b in 1:6) {
 #  param$beta = rep((b+3)/18*beta,2*param$n)
 	p = param
-  p$phi = c(1.3*(1-b/6),.5,1.3*b/6)
+	btrans = (.5+b/12)
+  p$phi = c(1.3*(1-btrans),.5,1.3*btrans)
 # 30 simulations for 360 days
 	A = repsim(
 		    SIR23$S0,
@@ -60,8 +61,8 @@ for (b in 1:6) {
 Ro = rep(0,6)
 for (b in 1:6) {
 #  param$beta = rep((b+3)/18*beta,2*param$n)
-	p = param
-  p$phi = c(1.3*(1-b/6),.5,1.3*b/6)
+	btrans = (.5+b/12)
+  p$phi = c(1.3*(1-btrans),.5,1.3*btrans)
   Ro[b] = RoSLmAI3R(p)
 }
 
