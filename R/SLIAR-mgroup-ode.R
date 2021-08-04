@@ -57,7 +57,7 @@ param = list(
 		)      
 )	
 
-state_names = c(
+stage_names = c(
  'S',
  'L1', # latent group-stage
  'L2',
@@ -72,14 +72,14 @@ state_names = c(
  'Rh'  # recovered from hospital 
 )
 
-num_states = length(state_names)
-mixing_states = c(1:6,9,12)
-infectious_states = 4:5
+num_stages = length(stage_names)
+mixing_stages = c(1:6,9,12)
+infectious_stages = 4:5
 
 ics = array(
 	data = 0.,
-  dim = c(num_ages,num_status,num_states),
-  dimnames = list(age_names,status_names,state_names)
+  dim = c(num_ages,num_status,num_stages),
+  dimnames = list(age_names,status_names,stage_names)
 	)
 ics[,,'S'] = population
 ics['younger','unvaccinated','L1'] = 1
@@ -91,14 +91,14 @@ force.of.infection.age <- function(x,param) {
 		# assume two groups and 2 stages in each of L, I, and A
 		# caution!  the two group 2 stage assuption is hard-coded in this routine
 		N = c(
-			sum(x[mixing_states]),
-		  sum(x[num_states+mixing_states])
+			sum(x[mixing_stages]),
+		  sum(x[num_stages+mixing_stages])
 			)
 		# total number of contacts made across both groups 
 		C = sum(contact_rate*(1-contact_pref)*N)
 		infectivity = c(
-			sum(inf_stage*x[infectious_states]),
-			sum(inf_stage*x[num_states+infectious_states])
+			sum(inf_stage*x[infectious_stages]),
+			sum(inf_stage*x[num_stages+infectious_stages])
 			)
 		force_of_infection = 
 			contact_rate*contact_pref*sus_group*inf_group*infectivity/N +                                       # within group mixing
@@ -108,7 +108,7 @@ force.of.infection.age <- function(x,param) {
 force.of.infection.age.vac <- function(x,param) {
 
 		# mixing populations assumed to be S, L, A, and R; also assumed to be defined globally
-		N = rowSums(x[,,mixing_states],dims=2)
+		N = rowSums(x[,,mixing_stages],dims=2)
 
 
 		# total number of contacts distributed across both groups 
@@ -118,7 +118,7 @@ force.of.infection.age.vac <- function(x,param) {
 		# total number of contacts made within each group
 		Ca = contact_rate*contact_pref*rowSums(N)
 		# sum relative infectivity by infectious stage for each group
-		infectivity = rowSums(inf_group*rowSums(inf_stage*x[,,infectious_states],dims=2))
+		infectivity = rowSums(inf_group*rowSums(inf_stage*x[,,infectious_stages],dims=2))
 		force_of_infection = 
 			contact_rate*(
 				contact_pref*infectivity/rowSums(N) +                                       # within group mixing
@@ -138,13 +138,13 @@ mgroup.ode <- function(
 	parms=NULL)            # named vector of parameters
 {
 	# apply indexing to the state vector for imporved readability
-	dim(x) = c(num_ages,num_status,num_states)
-	dimnames(x) = list(age_names,status_names,state_names) 
+	dim(x) = c(num_ages,num_status,num_stages)
+	dimnames(x) = list(age_names,status_names,stage_names) 
 
 	dx = array(
 		0,
-  	dim = c(num_ages,num_status,num_states), 
-  	dimnames = list(age_names,status_names,state_names) 
+  	dim = c(num_ages,num_status,num_stages), 
+  	dimnames = list(age_names,status_names,stage_names) 
   )
 
 	# unwind states and parameters to make code a bit more readable
@@ -173,38 +173,39 @@ mgroup.ode <- function(
 
 # deSolve ode routines need initial states and a list of output times
 
-tf <- 60  
-times <- seq(0, tf, by=0.01)
-x0  <- rep(0,length=24)
-names(x0) = state_names
-x0[c(1,13)] = 400000
-x0[2] = 1
+tf <- 360  
+times <- seq(0, tf, length=120)
 
-# run the ode simulator and return the results in a way ggplot likes
-# should separate rewrapping into long format as we sometimes want the solution in ode format
-ode_long = function(
+# run the ode simulator and return the results in a wide format grouped by age and status
+ode_sim = function(
 	param,
-	y = x0,    # vector of initial states
-	times = seq(0,tf,length=200),         # vector of output times
+	y = ics,    # vector of initial states
+	times = seq(0,tf,length=120),         # vector of output times
 	func = mgroup.ode
 ) {
 	# run default ode solver
 	x = ode(y, times, func, param) 
 	# rewrap the results in long format
-	as.data.frame(x) %>% pivot_longer(!time,names_to='state')
+	return(ode_reshape_wide(x))
 }
 
-## plot infected states vs time on single pair of axes
-
-state_plot = function(data) {
-	ggplot(data,aes(x=time,y=value)) + 
-		geom_line(aes(col=state))
+ode_reshape_long = function(res) {
+	# really just a reminder of how to reshape the wide version of the results
+	pivot_longer(res,all_of(stage_names),names_to='stage')
 }
 
-## facet plots (array of state-vs-time plots)
-facet_plot = function(data) {
-	ggplot(data,aes(x=time,y=value))+
-		geom_line() + 
-		facet_wrap(~state,scales='free')
-} 
+ode_reshape_wide = function(x) {
+	# reshape to data frame grouped by age and status and columns for each infection stage
+	res = NULL
+	for (i in 1:num_ages) {
+		for (j in 1:num_status) {
+			res = rbind(res,x[,c(1,1+j+num_ages*num_status*(0:(num_stages-1)))])
+		}
+	}
+	res = as.data.frame(res)
+	names(res) = c('time',stage_names)
+	res$age=rep(age_names,each=dim(x)[1],times=num_status)
+	res$status=rep(status_names,each=num_ages*dim(x)[1])
+	return(res)
+}	
 
