@@ -231,8 +231,8 @@ ode_reshape_wide = function(x) {
 	}
 	res = as.data.frame(res)
 	names(res) = c('time',stage_names)
-	res$age=rep(age_names,each=dim(x)[1],times=num_status)
-	res$status=rep(status_names,each=num_ages*dim(x)[1])
+	res$age=rep(age_names,each=dim(x)[1]*num_status)
+	res$status=rep(status_names,each=dim(x)[1],times=num_ages)
 	return(res)
 }	
 
