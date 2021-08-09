@@ -177,7 +177,7 @@ mgroup.ode <- function(
 	# and return right hand side of ode as a named list
 	with(as.list(parms),{
 
-    dx[,,'S'] = -force.of.infection.age.vac(x,param)*x[c(1,13)]
+    dx[,,'S'] = -force.of.infection.age.vac(x,param)*x[,,'S']
 		dx[,,'L1'] = -dx[,,'S'] + importation - prog_latent*x[,,'L1']   # latent stage 1
 		dx[,,'L2'] = prog_latent*x[,,'L1'] - prog_latent*x[,,'L2']   # latent stage 2
 		dx[,,'A1'] = prog_latent*x[,,'L2'] - ( prog_infectious + dev_symptoms )*x[,,'A1'] # infectious stage 1
