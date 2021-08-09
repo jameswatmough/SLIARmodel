@@ -22,6 +22,12 @@ vac_levels = c(.5,.75,.8)
 population = 800000*diag(age_dist)%*%cbind(1-vac_levels,vac_levels)
 dimnames(population) = list(age_names,status_names)
 
+progression_base = 2/7
+symptom_base = progression_base*(2/sqrt(1-.3) - 1)
+hospital_base = progression_base*(2/sqrt(1-.2) - 1) 
+Ro = 5
+infectivity_base = progression_base*Ro/(1+.5*progression_base/(symptom_base+progression_base))
+
 ## State variables
 # base parameters, with descriptions
 # most parameters are structured by age and status, 
@@ -32,24 +38,24 @@ param = list(
 	num_latent = 2,
 	prog_latent = 1,        # 2 days on average with latent infection, Erlang distribution
 	num_infectious = (num_infectious = 2),
-	prog_infectious = 2/7,  # 7 days on average infectious, Erlang distribution
-	dev_symptoms = # fraction of cases developing "symptoms which can't be ignored"
-		2/7*array( 
-			c( 1/6,2/3,3/4,       # increasing with age
-				1/12,1/3,3/8 ),     # dereasing with vaccination status
+	prog_infectious = progression_base,  # 7 days on average infectious, Erlang distribution
+	dev_symptoms = # rate infections developing "symptoms which can't be ignored", based on 70% symptomatic 
+		symptom_base*array( 
+			c( 1/6,2/3,1,       # increasing with age
+				1/12,1/3,1/2),     # dereasing with vaccination status
 			dim=c(num_ages,num_status)
 			),   
-	prog_hospital = # hospitalation rates given isolation-worthy symptoms
-		2/7*array(
-			c(1/19, 1/4, 1/3,   # status 1, stage 1
-	      1/19, 1/4, 1/3,   # status 2, stage 1
-	      1/19, 1/4, 1/3,   # status 1, stage 2
-	      1/19, 1/4, 1/3),  # status 2, stage 2
+	prog_hospital = # hospitalation rates given isolation-worthy symptoms (base 20% cases hospitalized)
+		hospital_base*array(
+			c(1e-3, 1e-2, 1,   # status 1, stage 1
+	      1e-4, 1e-4, 1,   # status 2, stage 1
+	      1e-2, 1e-1, 2,   # status 1, stage 2
+	      1e-3, 1e-3, 1),  # status 2, stage 2
 			dim=c(num_ages,num_status,num_infectious),
 			dimnames=list(age_names,status_names,NULL)
 			),
-	survival = 1,
-	inf_stage = c(1,.5),     # second infectious stage has lower viral load, ergo less infectious
+	survival = 1,    # don't kill anyone
+	inf_stage = infectivity_base*c(1,.5),     # second infectious stage has lower viral load, ergo less infectious
   
 	inf_group = array(
 		1,        # vaccine and age effect of infectiousness given infection, assumed minimal
@@ -206,7 +212,8 @@ ode_sim = function(
 	# run default ode solver
 	x = ode(y, times, func, param) 
 	# rewrap the results in long format
-	return(ode_reshape_wide(x))
+	# return(ode_reshape_wide(x))
+	return(x)
 }
 
 ode_reshape_long = function(res) {
@@ -219,7 +226,7 @@ ode_reshape_wide = function(x) {
 	res = NULL
 	for (i in 1:num_ages) {
 		for (j in 1:num_status) {
-			res = rbind(res,x[,c(1,1+j+num_ages*num_status*(0:(num_stages-1)))])
+			res = rbind(res,x[,c(1, 1 + i + (j-1)*num_ages + num_ages*num_status*(0:(num_stages-1)) )])
 		}
 	}
 	res = as.data.frame(res)
