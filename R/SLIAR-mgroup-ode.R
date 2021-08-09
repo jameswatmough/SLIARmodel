@@ -11,45 +11,59 @@ library("tidyverse")
 
 # ODE model
 
-age_names = c( 'younger','older' )
+age_names = c( 'younger','middle','older' )
 num_ages = length(age_names)
+age_dist = c(.3,.4,.3)
 
 status_names = c( 'unvaccinated','vaccinated' )
 num_status = length(status_names)
+vac_levels = c(.5,.75,.8)
 
-population = 800000*matrix(
-	c(.4*(1-.6),.4*.6,
-		.6*(1-.8),.6*.8),
-	nrow = 2,
-	byrow=TRUE,
-	dimnames=list(age_names,status_names)
-	)
+population = 800000*diag(age_dist)%*%cbind(1-vac_levels,vac_levels)
+dimnames(population) = list(age_names,status_names)
 
 ## State variables
 # base parameters, with descriptions
+# most parameters are structured by age and status, 
+# some could be structured by stage as well
+# structure is named in most cases for readability
+# note no checking is done to ensure parameters have the correct number of values!
 param = list(
 	num_latent = 2,
 	prog_latent = 1,        # 2 days on average with latent infection, Erlang distribution
-	num_infectious = 2,
+	num_infectious = (num_infectious = 2),
 	prog_infectious = 2/7,  # 7 days on average infectious, Erlang distribution
-	dev_symptoms = 2/7*c(1/3,1),   # 25% and 50% of cases develop "symptoms which can't be ignored", need to separate out vaccinated
-	prog_hospital_1 = 2/7*c(1/19,1/4),  # hospitalation rates (based on fractions hospitalized)
-	prog_hospital_2 = 2/7*c(1/19,1/4),  # hospitalation rates (based on fractions hospitalized)
+	dev_symptoms = # fraction of cases developing "symptoms which can't be ignored"
+		2/7*array( 
+			c( 1/6,2/3,3/4,       # increasing with age
+				1/12,1/3,3/8 ),     # dereasing with vaccination status
+			dim=c(num_ages,num_status)
+			),   
+	prog_hospital = # hospitalation rates given isolation-worthy symptoms
+		2/7*array(
+			c(1/19, 1/4, 1/3,   # status 1, stage 1
+	      1/19, 1/4, 1/3,   # status 2, stage 1
+	      1/19, 1/4, 1/3,   # status 1, stage 2
+	      1/19, 1/4, 1/3),  # status 2, stage 2
+			dim=c(num_ages,num_status,num_infectious),
+			dimnames=list(age_names,status_names,NULL)
+			),
 	survival = 1,
 	inf_stage = c(1,.5),     # second infectious stage has lower viral load, ergo less infectious
   
 	inf_group = array(
-		1,        # vaccine effect of infectiousness given infection 
+		1,        # vaccine and age effect of infectiousness given infection, assumed minimal
 		dim=c(num_ages,num_status),
 		dimnames=list(age_names,status_names)
 		),      
 	sus_group =  array(
-		c(.55,.28,.55,.28),      # random numbers for now!
+		c( 1, 1, 1,    # status 1  (unvaccinated, no reduction)
+			.2,.2,.2),   # status 2  (vaccinated 80% effective)
 		dim=c(num_ages,num_status),
 		dimnames=list(age_names,status_names)
 		),      
-	contact_rate = c(1,1),           # equal contact rates for each group
-	contact_pref = c(.6,.6),          # fraction contacts within group 
+	contact_rate = c(1,1,1),           # equal contact rates for each group
+	contact_pref = c(.6,.6,.6),          # fraction contacts within group 
 	importation = array(
 		0,        # vaccine effect of infectiousness given infection 
 		dim=c(num_ages,num_status),
@@ -87,9 +101,10 @@ ics['younger','unvaccinated','L1'] = 1
 
 force.of.infection.age <- function(x,param) {
 
+	with(as.list(param),{
 		# mixing populations assumed to be S, L, A, and R;  I and H assumed in relative isolation from main population
 		# assume two groups and 2 stages in each of L, I, and A
-		# caution!  the two group 2 stage assuption is hard-coded in this routine
+		# caution!  the two group 2 stage assumption is hard-coded in this routine
 		N = c(
 			sum(x[mixing_stages]),
 		  sum(x[num_stages+mixing_stages])
@@ -103,22 +118,26 @@ force.of.infection.age <- function(x,param) {
 		force_of_infection = 
 			contact_rate*contact_pref*sus_group*inf_group*infectivity/N +                                       # within group mixing
 			contact_rate*(1-contact_pref)*sus_group*sum(contact_rate*(1-contact_pref)*inf_group*infectivity)/C  # between group mixing
+		return(force_of_infection)
+	})
 }
 
 force.of.infection.age.vac <- function(x,param) {
 
+	with(as.list(param),{
 		# mixing populations assumed to be S, L, A, and R; also assumed to be defined globally
 		N = rowSums(x[,,mixing_stages],dims=2)
 
-
-		# total number of contacts distributed across both groups 
-		C = sum(contact_rate*(1-contact_pref)*rowSums(N))
+		# total number of contacts distributed across age groups 
+		 C = sum(contact_rate*(1-contact_pref)*rowSums(N))
 
 
 		# total number of contacts made within each group
-		Ca = contact_rate*contact_pref*rowSums(N)
-		# sum relative infectivity by infectious stage for each group
-		infectivity = rowSums(inf_group*rowSums(inf_stage*x[,,infectious_stages],dims=2))
+		# Ca = contact_rate*contact_pref*rowSums(N)
+		# sum relative infectivity by infectious stage for each group and then sum over status (rows)
+		# note the `apply` computes dot products along the 3rd dimension (infection stage)
+		# and the rowSums sums along status
+		infectivity = rowSums(inf_group*apply(x[,,infectious_stages],1:2,function(x) x%*%inf_stage))
 		force_of_infection = 
 			contact_rate*(
 				contact_pref*infectivity/rowSums(N) +                                       # within group mixing
@@ -127,6 +146,7 @@ force.of.infection.age.vac <- function(x,param) {
 		# should return a dim(num_ages,num_status) array of forces of infection
 
 		return(force_of_infection)
+	})
 }
 
 # set up the right hand side for the ode solver
@@ -157,11 +177,11 @@ mgroup.ode <- function(
 		dx[,,'A1'] = prog_latent*x[,,'L2'] - ( prog_infectious + dev_symptoms )*x[,,'A1'] # infectious stage 1
 		dx[,,'A2'] = prog_infectious*x[,,'A1'] - ( prog_infectious + dev_symptoms )*x[,,'A2']   # infectious stage 2
 		dx[,,'Ra'] = prog_infectious*x[,,'A2'] # recovered from mild infection
-		dx[,,'I1'] = dev_symptoms*x[,,'A1'] - (prog_infectious+prog_hospital_1)*x[,,'I1'] # isolated stage 1
-		dx[,,'I2'] = dev_symptoms*x[,,'A2'] + prog_infectious*x[,,'I1'] - (prog_infectious+prog_hospital_2)*x[,,'I2'] # isolated stage 2
+		dx[,,'I1'] = dev_symptoms*x[,,'A1'] - (prog_infectious+prog_hospital[,,1])*x[,,'I1'] # isolated stage 1
+		dx[,,'I2'] = dev_symptoms*x[,,'A2'] + prog_infectious*x[,,'I1'] - (prog_infectious+prog_hospital[,,2])*x[,,'I2'] # isolated stage 2
 		dx[,,'Ri'] = prog_infectious*x[,,'I2']  # recovered from isolation 
-		dx[,,'H1'] = prog_hospital_1*x[,,'I1'] - prog_infectious*x[,,'H1'] # hospital stage 1
-		dx[,,'H2'] = prog_hospital_2*x[,,'I2'] + prog_infectious*x[,,'H1'] - prog_infectious*x[,,'H2'] # hospital stage 2
+		dx[,,'H1'] = prog_hospital[,,1]*x[,,'I1'] - prog_infectious*x[,,'H1'] # hospital stage 1
+		dx[,,'H2'] = prog_hospital[,,2]*x[,,'I2'] + prog_infectious*x[,,'H1'] - prog_infectious*x[,,'H2'] # hospital stage 2
 		dx[,,'Rh'] = survival*prog_infectious*x[,,'H2'] # recovered from hospital 
 
 	return(list(as.vector(dx)))

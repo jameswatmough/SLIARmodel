@@ -1,18 +1,25 @@
 # Simple SIR-type ode and branching process simulations
 
-#  Files
+## Multi-group impimentation with age and vaccine strucuture
 
- * *SLIAR-testruns.R* sources a model and parameter set, runs the ode and SSA routines, and produces a few simple plots
+The file 'R/SLIAR-mgroup-ode.R' contains code for a simple SLIAR model with two structures.  The defaults assume the structures are age (younger, middle, older) and vaccine status (vaccinated, unvaccinated).  Erlang distributions of sojourn times are implimented by doubling the L,I,and A compartments.  The default parameters assume L is latent, I is infectious, but isolated, and A is infectious and non-isoloting (mild, easily-dismssed symptoms).  Thus, Ra, Ri, and Rh are recovered asymptomatic, isolating, and hospitalized, respectively.  
+Note the SLIAR structure is really S->L->{AIH}->R where A,I and H are parallel routes of progression and everyone begins their infectious period without symptoms (i.e., in A).
 
- * *SLIAR-importation.R* sources a model and parameter set, sets Ro below 1 and sets importation rate to 3 latent infections per day, runs the SSA routines, and produces a few simple plots
+Run the model with default parameters as follows:
 
- * *R/SLIAR-SSA.R* model definitions and base scripts for SSA and ode runs
+~~~
+source('R/SLIAR-mgroup-ode.R')
+res = ode_sim(param)
+res_long = ode_reshape_long(res)
+~~~
 
- * *data/parameter-sets.csv* sample parameter sets
+'res' will contain a wide version of the output, 'res_long' contains a long version
 
-# data structures
-
-  * *param* row from parameter-sets for current computations
-	* *rates* list of transition rates for SSA routine
-	* *nu*  matrix of transitions, one column for each transition, one row for each state variable
-	* *rhs* rates for the ode approximation
+plot results with commands like
+~~~
+gplot(
+  subset(res,status=='vaccinated'),
+	aes(x=time,y=Rh)
+	) +
+	geom_line(aes(col=age))
+~~~
